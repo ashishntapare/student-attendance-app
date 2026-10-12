@@ -1,0 +1,309 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Attendance Dashboard</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            color: #1f2937;
+        }
+
+        header {
+            background: white;
+            padding: 24px 7%;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        header h1 { margin: 0; color: #174ea6; }
+        header p { color: #64748b; margin-bottom: 0; }
+
+        main {
+            max-width: 1100px;
+            margin: 35px auto;
+            padding: 0 20px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 18px;
+            margin-bottom: 25px;
+        }
+
+        .summary, .panel {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 25px;
+        }
+
+        .summary h2 {
+            margin-top: 0;
+            font-size: 15px;
+            color: #64748b;
+        }
+
+        .count {
+            font-size: 34px;
+            font-weight: bold;
+            color: #174ea6;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 7px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="date"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            font-size: 15px;
+        }
+
+        button {
+            margin-top: 18px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 7px;
+            background: #174ea6;
+            color: white;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        button:hover { background: #123c80; }
+
+        .message {
+            padding: 12px;
+            border-radius: 7px;
+            margin-bottom: 15px;
+        }
+
+        .success { background: #dcfce7; color: #166534; }
+        .error { background: #fee2e2; color: #991b1b; }
+
+        .table-wrapper { overflow-x: auto; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th { background: #f8fafc; color: #475569; }
+
+        .empty {
+            text-align: center;
+            padding: 30px;
+            color: #64748b;
+        }
+
+        .status-options {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .status-options label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin: 0;
+            font-weight: normal;
+        }
+
+        .status-options input { accent-color: #174ea6; }
+
+        .muted { color: #64748b; }
+
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #64748b;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Student Attendance</h1>
+        <p>Student records and attendance management</p>
+    </header>
+
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <div class="message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="summary-grid">
+            <section class="summary">
+                <h2>Total Registered Students</h2>
+                <div class="count">{{ total_students }}</div>
+            </section>
+
+            <section class="summary">
+                <h2>Marked Present · Selected Date</h2>
+                <div class="count">{{ present_count }}</div>
+            </section>
+        </div>
+
+        <section class="panel">
+            <h2>Register a Student</h2>
+
+            <form action="{{ url_for('add_student') }}" method="POST">
+                <div class="form-grid">
+                    <div>
+                        <label for="roll_number">Roll Number</label>
+                        <input type="text" id="roll_number"
+                               name="roll_number" maxlength="30" required>
+                    </div>
+
+                    <div>
+                        <label for="name">Student Name</label>
+                        <input type="text" id="name"
+                               name="name" maxlength="100" required>
+                    </div>
+
+                    <div>
+                        <label for="course">Course</label>
+                        <input type="text" id="course"
+                               name="course" maxlength="100" required>
+                    </div>
+                </div>
+
+                <button type="submit">Register Student</button>
+            </form>
+        </section>
+
+        <section class="panel">
+            <h2>Mark Attendance</h2>
+            <p class="muted">Choose a date, select each student's status, and save.</p>
+
+            <form action="{{ url_for('mark_attendance') }}" method="POST">
+                <div>
+                    <label for="attendance_date">Attendance Date</label>
+                    <input type="date" id="attendance_date"
+                           name="attendance_date"
+                           value="{{ selected_date }}" required>
+                </div>
+
+                <div class="table-wrapper" style="margin-top: 20px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Roll Number</th>
+                                <th>Student Name</th>
+                                <th>Attendance Status</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for student in students %}
+                            <tr>
+                                <td>{{ student["roll_number"] }}</td>
+                                <td>{{ student["name"] }}</td>
+                                <td>
+                                    <div class="status-options">
+                                        <label>
+                                            <input type="radio"
+                                                   name="status_{{ student['id'] }}"
+                                                   value="Present"
+                                                   {% if student["status"] == "Present" %}checked{% endif %}
+                                                   required>
+                                            Present
+                                        </label>
+
+                                        <label>
+                                            <input type="radio"
+                                                   name="status_{{ student['id'] }}"
+                                                   value="Absent"
+                                                   {% if student["status"] == "Absent" %}checked{% endif %}
+                                                   required>
+                                            Absent
+                                        </label>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="empty">
+                                    Register a student before marking attendance.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if students %}
+                <button type="submit">Save Attendance</button>
+                {% endif %}
+            </form>
+        </section>
+
+        <section class="panel">
+            <h2>Student Records</h2>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Roll Number</th>
+                            <th>Student Name</th>
+                            <th>Course</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>{{ student["roll_number"] }}</td>
+                            <td>{{ student["name"] }}</td>
+                            <td>{{ student["course"] }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="empty">
+                                No students registered yet.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        Student Attendance Application · Python, Flask and SQLite
+    </footer>
+</body>
+</html>
