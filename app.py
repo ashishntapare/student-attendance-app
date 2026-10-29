@@ -6,11 +6,7 @@ from database import initialize_database, get_connection
 app = Flask(__name__)
 app.secret_key = "student-attendance-local-key"
 
-import os
-
-if os.environ.get("VERCEL") != "1":
-    initialize_database()
-
+initialize_database()
 
 @app.route("/")
 def home():
