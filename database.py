@@ -1,12 +1,28 @@
 
+import os
 import sqlite3
 
-import os
+DATABASE_NAME = (
+    ":memory:"
+    if os.environ.get("VERCEL") == "1"
+    else os.path.join(os.path.dirname(os.path.abspath(__file__)), "attendance.db")
+)
 
-DATABASE_NAME = os.path.join(os.path.dirname(os.path.abspath(__file__)), "attendance.db")
+_connection = None
 
 
 def get_connection():
+    global _connection
+
+    if DATABASE_NAME == ":memory:":
+        if _connection is None:
+            _connection = sqlite3.connect(
+                ":memory:",
+                check_same_thread=False
+            )
+            _connection.row_factory = sqlite3.Row
+        return _connection
+
     connection = sqlite3.connect(DATABASE_NAME)
     connection.row_factory = sqlite3.Row
     return connection
@@ -36,7 +52,9 @@ def initialize_database():
     """)
 
     connection.commit()
-    connection.close()
+
+    if DATABASE_NAME != ":memory:":
+        connection.close()
 
 
 if __name__ == "__main__":
